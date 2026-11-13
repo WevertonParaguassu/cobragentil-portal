@@ -13,7 +13,7 @@ Este diretório é independente. O repositório ao vivo `/workspace/cobrag/` e a
    - Reembolso (`charge.refunded` → `status = refunded`) ou contestação (`charge.dispute.created` → `status = revoked`) **cortam o acesso na hora** (app e ZIP).
    - A partir do 10º dia, com `status = active`: o portal libera o botão e `portal-download` entrega o pacote ZIP (`CobraGentil-v1.zip`).
 4. Privacidade: páginas e funções **não** expõem CPF, CNPJ, endereço físico nem o e-mail pessoal `wptadvgo@gmail.com`. Rodapé e suporte usam apenas:
-   - `Fornecedor responsável: Weverton Paraguassú Teixeira · PRONAOS`
+   - `Fornecedor responsável: Equipe Pronaos`
    - `contato.pronaos@gmail.com`
 
 ## Conteúdo
