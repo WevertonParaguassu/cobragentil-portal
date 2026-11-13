@@ -1,0 +1,23 @@
+# Render Blueprint — Static Site (free/starter, zero fixed monthly cost).
+# Publish only the web/ folder. The CobraGentil app and the ZIP are NOT here;
+# they are served by authenticated Supabase Edge Functions.
+services:
+  - type: web
+    name: cobragentil-portal
+    runtime: static
+    buildCommand: "true"
+    staticPublishPath: web
+    pullRequestPreviewsEnabled: false
+    headers:
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: no-referrer
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      - path: /health
+        name: Content-Type
+        value: text/plain; charset=utf-8
