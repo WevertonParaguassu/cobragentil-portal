@@ -1,7 +1,7 @@
 import { evaluateLicense } from "./license.mjs";
 
 export const SUPPORT_EMAIL = "contato.pronaos@gmail.com";
-export const SUPPLIER_LINE = "Fornecedor responsável: Weverton Paraguassú Teixeira · PRONAOS";
+export const SUPPLIER_LINE = "Fornecedor responsável: Equipe Pronaos";
 
 function escapeHtml(value) {
   return String(value ?? "")
