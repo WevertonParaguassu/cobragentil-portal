@@ -69,19 +69,91 @@ async function loadStatus() {
   return payload;
 }
 
+function esc(v) {
+  return String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function fmt(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "—" : new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", dateStyle: "short", timeStyle: "short" }).format(d);
+}
+
+async function loadProducts() {
+  try {
+    const res = await functionsFetch("pronaos-area");
+    const payload = await res.json();
+    return res.ok ? payload.products || [] : [];
+  } catch {
+    return [];
+  }
+}
+
+function renderProductsHtml(products) {
+  if (!products.length) return "";
+  return products.map((p) => {
+    const active = p.status === "active";
+    const badge = active ? "ok" : "alerta";
+    const label = active ? "Ativa" : p.status === "refunded" ? "Reembolsada" : "Revogada";
+    let zip = "";
+    if (active && p.can_download_zip) {
+      zip = `<button type="button" class="cta escuro" data-acao="zip" data-produto="${esc(p.slug)}">Baixar pacote ZIP (${esc(p.zip_filename || p.slug)})</button>`;
+    } else if (active) {
+      const d = p.days_remaining;
+      zip = `<button type="button" class="cta escuro" disabled aria-disabled="true">ZIP bloqueado até o 10º dia</button>
+        <p class="cta-nota">${d === 1 ? "Falta 1 dia" : `Faltam ${esc(d)} dias`} para liberar o ZIP. Liberação prevista em ${esc(fmt(p.zip_unlock_at))} (horário de Brasília).</p>`;
+    }
+    const manual = active ? `<button type="button" class="cta" data-acao="manual" data-produto="${esc(p.slug)}">Ver manual e instruções</button>` : `<p class="aviso">Licença encerrada por reembolso ou contestação. O manual e o ZIP foram bloqueados.</p>`;
+    return `<section class="caixa" id="produto-${esc(p.slug)}">
+      <span class="badge ${badge}">Licença: ${label}</span>
+      <h2>${esc(p.name)}</h2>
+      <ul class="meta-lista">
+        <li><strong>Pagamento confirmado em:</strong> ${esc(fmt(p.purchased_at))} (horário de Brasília)</li>
+        <li><strong>ZIP a partir de:</strong> ${esc(fmt(p.zip_unlock_at))} (horário de Brasília)</li>
+      </ul>
+      <div class="acoes">${manual}${zip}</div>
+      <pre class="manual-produto" hidden style="white-space:pre-wrap;max-height:60vh;overflow:auto"></pre>
+    </section>`;
+  }).join("");
+}
+
+async function productAction(ev) {
+  const btn = ev.target.closest("button[data-acao]");
+  if (!btn) return;
+  const slug = btn.dataset.produto;
+  const acao = btn.dataset.acao;
+  setMsg(els.painelMsg, acao === "zip" ? "Preparando o download…" : "Carregando o manual…", "cta-nota");
+  const res = await functionsFetch(`pronaos-area?product=${encodeURIComponent(slug)}&doc=${acao}`);
+  const payload = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    setMsg(els.painelMsg, payload.error || "Acesso recusado.", "erro");
+    return;
+  }
+  if (acao === "manual") {
+    const pre = document.querySelector(`#produto-${CSS.escape(slug)} .manual-produto`);
+    if (pre) { pre.textContent = payload.text || ""; pre.hidden = false; }
+    setMsg(els.painelMsg, "", "");
+  } else if (payload.url) {
+    window.location.href = payload.url;
+    setMsg(els.painelMsg, "Download iniciado. O link expira em 1 minuto.", "okmsg");
+  }
+}
+
 async function renderPainel() {
   show("painel");
   const { data } = await supabase.auth.getSession();
   const email = data?.session?.user?.email || "";
   if (els.who) els.who.textContent = email ? `Conectado como ${email}` : "";
-  setMsg(els.painelMsg, "Carregando sua licença…", "cta-nota");
+  setMsg(els.painelMsg, "Carregando suas compras…", "cta-nota");
   try {
-    const status = await loadStatus();
-    const model = dashboardModel(status);
-    els.painelMount.innerHTML = renderDashboardHtml(model);
+    const [status, products] = await Promise.all([loadStatus(), loadProducts()]);
+    const cobrag = status?.has_license || !products.length ? renderDashboardHtml(dashboardModel(status)) : "";
+    els.painelMount.innerHTML = cobrag + renderProductsHtml(products);
     setMsg(els.painelMsg, "", "");
     const openBtn = document.getElementById("btn-abrir-app");
-    if (openBtn) openBtn.addEventListener("click", openApp);
+    if (openBtn) openBtn.addEventListener("click", () => openApp("app"));
+    const manualBtn = document.getElementById("btn-abrir-manual");
+    if (manualBtn) manualBtn.addEventListener("click", () => openApp("manual"));
     const zipBtn = document.getElementById("btn-download-zip");
     if (zipBtn && zipBtn.dataset.zip === "unlocked") {
       zipBtn.addEventListener("click", downloadZip);
@@ -92,16 +164,17 @@ async function renderPainel() {
   }
 }
 
-async function openApp() {
-  setMsg(els.painelMsg, "Carregando o CobraGentil…", "cta-nota");
-  const res = await functionsFetch("portal-app");
+async function openApp(doc = "app") {
+  const isManual = doc === "manual";
+  setMsg(els.painelMsg, isManual ? "Carregando o manual…" : "Carregando o CobraGentil…", "cta-nota");
+  const res = await functionsFetch(isManual ? "portal-app?doc=manual" : "portal-app");
   const payload = await res.json().catch(() => ({}));
   if (!res.ok) {
-    setMsg(els.painelMsg, payload.error || "Não foi possível abrir o aplicativo.", "erro");
+    setMsg(els.painelMsg, payload.error || (isManual ? "Não foi possível abrir o manual." : "Não foi possível abrir o aplicativo."), "erro");
     return;
   }
   const html = payload.html;
-  if (!html) {
+  if (!html || (isManual && payload.doc !== "manual")) {
     setMsg(els.painelMsg, "Resposta do aplicativo inválida.", "erro");
     return;
   }
@@ -163,6 +236,7 @@ async function logout() {
 }
 
 function bind() {
+  els.painelMount?.addEventListener("click", productAction);
   if (els.loginForm) els.loginForm.addEventListener("submit", handleLogin);
   document.getElementById("btn-sair")?.addEventListener("click", logout);
   document.getElementById("btn-sair-app")?.addEventListener("click", () => {

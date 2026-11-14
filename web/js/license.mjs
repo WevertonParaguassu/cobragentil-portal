@@ -1,7 +1,8 @@
 /**
  * CobraGentil Portal — license gate (10-day ZIP unlock).
  *
- * Rule (updated 13/11/2026, America/Sao_Paulo):
+ * Rule (updated 13/11/2026, America/Sao_Paulo; licença v1.2):
+ *   purchased_at = payment confirmation time (Stripe event.created; boleto: async_payment_succeeded)
  *   now <  purchased_at + 10 days  → authenticated portal use only; ZIP refused
  *   now >= purchased_at + 10 days  → ZIP download allowed if status === "active"
  *   status in {refunded, revoked}  → no app access and no ZIP, regardless of elapsed time
@@ -128,7 +129,7 @@ export function assertCanDownloadZip(evaluation) {
     const locked = evaluation?.reason === "zip_locked_until_day_10";
     const err = new Error(
       locked
-        ? "O download do pacote ZIP é liberado apenas a partir do 10º dia após a compra, sem estorno."
+        ? "A cópia offline em ZIP é liberada apenas a partir do 10º dia após a confirmação do pagamento, se a compra continuar ativa."
         : "Download do pacote ZIP indisponível para esta licença.",
     );
     err.status = 403;

@@ -56,10 +56,10 @@ export function dashboardModel(statusPayload, now = new Date()) {
     const days = ev.days_remaining;
     countdownText =
       days === 1
-        ? "Falta 1 dia para o download do pacote ZIP ser liberado."
-        : `Faltam ${days} dias para o download do pacote ZIP ser liberado.`;
+        ? "Falta 1 dia para a cópia offline em ZIP ser liberada."
+        : `Faltam ${days} dias para a cópia offline em ZIP ser liberada.`;
   } else if (canZip) {
-    countdownText = "O período de 10 dias foi concluído. O download do pacote ZIP está liberado.";
+    countdownText = "O período de 10 dias após a confirmação do pagamento foi concluído. A cópia offline em ZIP está liberada.";
   } else if (revoked) {
     countdownText =
       ev.status === "refunded"
@@ -99,7 +99,8 @@ export function renderDashboardHtml(model) {
       : `<p class="cta-nota">O botão de download do ZIP permanece oculto enquanto a licença não estiver ativa e com 10 dias concluídos.</p>`;
 
   const appBlock = model.show_open_app
-    ? `<button type="button" id="btn-abrir-app" class="cta">Abrir CobraGentil no portal</button>`
+    ? `<button type="button" id="btn-abrir-app" class="cta">Abrir CobraGentil no portal</button>
+       <button type="button" id="btn-abrir-manual" class="cta">Abrir o manual do comprador</button>`
     : `<p class="aviso">O aplicativo não está disponível para esta conta no momento.</p>`;
 
   return `
@@ -107,12 +108,12 @@ export function renderDashboardHtml(model) {
       <span class="badge ${badgeClass}">Licença: ${escapeHtml(model.status_label)}</span>
       <h2>Seu acesso ao CobraGentil</h2>
       <ul class="meta-lista">
-        <li><strong>Compra confirmada em:</strong> ${escapeHtml(formatDateTimePt(model.purchased_at))} (horário de Brasília)</li>
-        <li><strong>Download do ZIP a partir de:</strong> ${escapeHtml(formatDateTimePt(model.zip_unlock_at))} (horário de Brasília)</li>
+        <li><strong>Pagamento confirmado em:</strong> ${escapeHtml(formatDateTimePt(model.purchased_at))} (horário de Brasília)</li>
+        <li><strong>Cópia offline em ZIP a partir de:</strong> ${escapeHtml(formatDateTimePt(model.zip_unlock_at))} (horário de Brasília)</li>
         <li><strong>Dias restantes para o ZIP:</strong> ${model.days_remaining == null ? "—" : escapeHtml(model.days_remaining)}</li>
       </ul>
       <p>${escapeHtml(model.countdown_text)}</p>
-      <p>Nos primeiros 10 dias após a compra, o uso é feito somente com login neste portal. O pacote ZIP para uso offline é liberado a partir do 10º dia, se a compra permanecer ativa (sem estorno ou contestação). Em caso de reembolso, o acesso é encerrado automaticamente.</p>
+      <p>O produto completo já está neste portal: o aplicativo (com os 9 modelos) e o manual do comprador. A cópia offline em ZIP é liberada a partir do 10º dia após a confirmação do pagamento, se a compra continuar ativa (sem reembolso, estorno ou contestação). Em caso de reembolso, estorno ou contestação, o acesso ao portal e ao ZIP é desativado; os dados cadastrados no seu navegador não são apagados.</p>
       <div class="acoes">${appBlock}${zipBlock}</div>
     </section>`;
 }
